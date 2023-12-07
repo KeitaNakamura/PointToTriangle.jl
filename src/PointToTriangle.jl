@@ -8,26 +8,30 @@ using Reexport
 #############
 
 struct EdgeEquation{T}
-    X::T
-    Y::T
-    dX::T
-    dY::T
+    n::Vec{2,T}
+    Xn::T
+end
+
+function EdgeEquation(x::T, y::T, dx::T, dy::T) where {T}
+    X = Vec(x,y)
+    n = Vec(dy,-dx)
+    EdgeEquation(n, X⋅n)
 end
 
 # negative: left, positive: right, zero: on the line
-@inline function (E::EdgeEquation{T})(x::T, y::T) where {T}
-    X, Y, dX, dY = E.X, E.Y, E.dX, E.dY
-    (x-X)*dY - (y-Y)*dX
+@inline function (E::EdgeEquation{T})(x::Vec{2,T}) where {T}
+    n, Xn = E.n, E.Xn
+    x⋅n - Xn
 end
 
 struct Side{T}
-    a::Vec{2,T}
-    b::Vec{2,T}
-    c::Vec{2,T} # normalized
     # edge equations
     E_ab::EdgeEquation{T}
     E_aa′::EdgeEquation{T}
     E_bb′::EdgeEquation{T}
+    # precomputed for projection
+    c::Vec{2,T}
+    v::Vec{2,T}
 end
 
 function Side(a::Vec{2,T}, b::Vec{2,T}) where {T}
@@ -36,12 +40,8 @@ function Side(a::Vec{2,T}, b::Vec{2,T}) where {T}
     E_ab = EdgeEquation(a[1], a[2], c[1], c[2])
     E_aa′ = EdgeEquation(a[1], a[2], n[1], n[2])
     E_bb′ = EdgeEquation(b[1], b[2], n[1], n[2])
-    Side(a, b, c, E_ab, E_aa′, E_bb′)
-end
-
-@inline function position(P₀′::Vec{2,T}, side::Side{T}) where {T}
-    x, y = P₀′
-    side.E_ab(x,y), side.E_aa′(x,y), side.E_bb′(x,y)
+    v = a - (a⋅c)*c
+    Side(E_ab, E_aa′, E_bb′, c, v)
 end
 
 struct Triangle{T}
@@ -80,13 +80,13 @@ end
     side1, side2, side3 = tri.side1, tri.side2, tri.side3
     P₀′ = @Tensor transform(P₀, tri)[2:3]
     # side1
-    E₁_ab, E₁_aa′, E₁_bb′ = position(P₀′, side1)
+    E₁_ab, E₁_aa′, E₁_bb′ = side1.E_ab(P₀′), side1.E_aa′(P₀′), side1.E_bb′(P₀′)
     E₁_ab<0 && E₁_aa′>0 && E₁_bb′<0 && return transform_inv(_project(P₀′, side1), tri)-P₀
     # side2
-    E₂_ab, E₂_aa′, E₂_bb′ = position(P₀′, side2)
+    E₂_ab, E₂_aa′, E₂_bb′ = side2.E_ab(P₀′), side2.E_aa′(P₀′), side2.E_bb′(P₀′)
     E₂_ab<0 && E₂_aa′>0 && E₂_bb′<0 && return transform_inv(_project(P₀′, side2), tri)-P₀
     # side3
-    E₃_ab, E₃_aa′, E₃_bb′ = position(P₀′, side3)
+    E₃_ab, E₃_aa′, E₃_bb′ = side3.E_ab(P₀′), side3.E_aa′(P₀′), side3.E_bb′(P₀′)
     E₃_ab<0 && E₃_aa′>0 && E₃_bb′<0 && return transform_inv(_project(P₀′, side3), tri)-P₀
     # vertex1
     E₁_aa′<0 && E₃_bb′>0 && return tri.P₁-P₀
@@ -98,7 +98,7 @@ end
     transform_inv(P₀′, tri)-P₀
 end
 
-@inline _project(P₀′::Vec{2,T}, side::Side{T}) where {T} = side.a + ((P₀′-side.a)⋅side.c)*side.c
+@inline _project(P₀′::Vec{2,T}, side::Side{T}) where {T} = side.v + (side.c⋅P₀′)*side.c
 @inline transform(a::Vec{3,T}, tri::Triangle{T}) where {T} = tri.R ⋅ (a + tri.t)
 @inline transform_inv(a::Vec{3,T}, tri::Triangle{T}) where {T} = tri.R⁻¹ ⋅ a - tri.t
 @inline transform_inv(a::Vec{2,T}, tri::Triangle{T}) where {T} = transform_inv(vcat(0,a), tri)
