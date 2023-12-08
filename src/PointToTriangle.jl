@@ -1,7 +1,6 @@
 module PointToTriangle
 
-using Reexport
-@reexport using Tensorial
+using Tensorial
 
 #############
 # 2D method #
@@ -57,6 +56,10 @@ struct Triangle{T}
     side3::Side{T}
 end
 
+function Triangle(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
+    @assert length(P₁) == length(P₂) == length(P₃) == 3
+    Triangle(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
+end
 function Triangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
     P₁′ = P₁ - P₁
     P₂′ = P₂ - P₁
@@ -77,6 +80,10 @@ function Triangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
 end
 
 @inline function vector(P₀::AbstractVector{T}, tri::Triangle{T}) where {T}
+    @assert length(P₀) == 3
+    convert(typeof(P₀), vector(Vec{3,T}(P₀), tri))
+end
+@inline function vector(P₀::Vec{3,T}, tri::Triangle{T}) where {T}
     side1, side2, side3 = tri.side1, tri.side2, tri.side3
     P₀′ = @Tensor transform(P₀, tri)[2:3]
     # side1
@@ -118,6 +125,10 @@ struct Triangle_3DMethod{T}
     V₃::Vec{3,T}
 end
 
+function Triangle_3DMethod(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
+    @assert length(P₁) == length(P₂) == length(P₃) == 3
+    Triangle_3DMethod(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
+end
 function Triangle_3DMethod(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
     Nₚ = (P₂-P₁) × (P₃-P₁)
     V₁ = normalize(P₁-P₂) + normalize(P₁-P₃)
@@ -126,6 +137,10 @@ function Triangle_3DMethod(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where
     Triangle_3DMethod(P₁, P₂, P₃, normalize(Nₚ), V₁, V₂, V₃)
 end
 
+@inline function vector(P₀::AbstractVector{T}, tri::Triangle_3DMethod{T}) where {T}
+    @assert length(P₀) == 3
+    convert(typeof(P₀), vector(Vec{3,T}(P₀), tri))
+end
 @inline function vector(P₀::Vec{3,T}, tri::Triangle_3DMethod{T}) where {T}
     P₁, P₂, P₃, Nₚ = tri.P₁, tri.P₂, tri.P₃, tri.Nₚ
     P₀′ = P₀ - ((P₀-P₁)⋅Nₚ) * Nₚ

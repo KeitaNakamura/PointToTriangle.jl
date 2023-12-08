@@ -1,2 +1,4 @@
 [deps]
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

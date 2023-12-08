@@ -4,9 +4,7 @@ authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 
 [compat]
-Reexport = "1"
 Tensorial = "0.13"
