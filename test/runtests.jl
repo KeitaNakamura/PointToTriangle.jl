@@ -10,6 +10,38 @@ using Test
 end
 
 @testset "PointToTriangle.vector" begin
+    project(p, a, b) = a + ((b-a)⋅(p-a))/((b-a)⋅(b-a))*(b-a)
+    for Tri in (PointToTriangle.Triangle, PointToTriangle.Triangle_3DMethod)
+        @test all(1:1_000_000) do _
+            a = rand(Vec{3})
+            b = rand(Vec{3})
+            c = rand(Vec{3})
+            p = rand(Vec{3})
+            tri = Tri(a,b,c)
+            # find minimum one by one
+            d = Inf
+            # vertices
+            d = min(d, norm(a-p))
+            d = min(d, norm(b-p))
+            d = min(d, norm(c-p))
+            # sides
+            if 0 ≤ (project(p,a,b)-a)⋅normalize(b-a) ≤ norm(b-a)
+                d = min(d, norm(project(p,a,b)-p))
+            end
+            if 0 ≤ (project(p,b,c)-b)⋅normalize(c-b) ≤ norm(c-b)
+                d = min(d, norm(project(p,b,c)-p))
+            end
+            if 0 ≤ (project(p,c,a)-c)⋅normalize(a-c) ≤ norm(a-c)
+                d = min(d, norm(project(p,c,a)-p))
+            end
+            # inside
+            p′ = project(a, p, p - (b-a)×(c-a))
+            if normalize((a-p′)×(b-p′)) ≈ normalize((b-p′)×(c-p′)) ≈ normalize((c-p′)×(a-p′))
+                d = min(d, norm(p′-p))
+            end
+            norm(PointToTriangle.vector(p, tri)) ≈ d
+        end
+    end
     @test all(1:1_000_000) do _
         a = rand(Vec{3})
         b = rand(Vec{3})
