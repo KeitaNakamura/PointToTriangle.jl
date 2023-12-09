@@ -123,6 +123,9 @@ struct Triangle_3DMethod{T}
     V₁::Vec{3,T}
     V₂::Vec{3,T}
     V₃::Vec{3,T}
+    l₁²::T
+    l₂²::T
+    l₃²::T
 end
 
 function Triangle_3DMethod(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
@@ -134,7 +137,7 @@ function Triangle_3DMethod(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where
     V₁ = normalize(P₁-P₂) + normalize(P₁-P₃)
     V₂ = normalize(P₂-P₃) + normalize(P₂-P₁)
     V₃ = normalize(P₃-P₁) + normalize(P₃-P₂)
-    Triangle_3DMethod(P₁, P₂, P₃, normalize(Nₚ), V₁, V₂, V₃)
+    Triangle_3DMethod(P₁, P₂, P₃, normalize(Nₚ), V₁, V₂, V₃, norm2(P₂-P₁), norm2(P₃-P₂), norm2(P₁-P₃))
 end
 
 @inline function vector(P₀::AbstractVector{T}, tri::Triangle_3DMethod{T}) where {T}
@@ -146,9 +149,9 @@ end
     P₀′ = P₀ - ((P₀-P₁)⋅Nₚ) * Nₚ
     pos = _position(P₀′, tri)
     pos == 0 && return P₀′-P₀
-    pos == 1 && return _point_to_side(P₀′, P₀, P₁, P₂)
-    pos == 2 && return _point_to_side(P₀′, P₀, P₂, P₃)
-    pos == 3 && return _point_to_side(P₀′, P₀, P₃, P₁)
+    pos == 1 && return _point_to_side(P₀′, P₀, P₁, P₂, tri.l₁²)
+    pos == 2 && return _point_to_side(P₀′, P₀, P₂, P₃, tri.l₂²)
+    pos == 3 && return _point_to_side(P₀′, P₀, P₃, P₁, tri.l₃²)
     error("unreachable")
 end
 
@@ -158,20 +161,24 @@ end
     P₁P₀′ = P₀′ - P₁
     P₂P₀′ = P₀′ - P₂
     P₃P₀′ = P₀′ - P₃
-    f₁ = (V₁ × P₁P₀′) ⋅ Nₚ
-    f₂ = (V₂ × P₂P₀′) ⋅ Nₚ
-    f₃ = (V₃ × P₃P₀′) ⋅ Nₚ
-    f₁ > 0 && f₂ ≤ 0 && return ifelse((P₁P₀′×P₂P₀′)⋅Nₚ ≥ 0, 0, 1)
-    f₂ > 0 && f₃ ≤ 0 && return ifelse((P₂P₀′×P₃P₀′)⋅Nₚ ≥ 0, 0, 2)
-    f₃ > 0 && f₁ ≤ 0 && return ifelse((P₃P₀′×P₁P₀′)⋅Nₚ ≥ 0, 0, 3)
+    v₁ = P₁P₀′ × Nₚ
+    v₂ = P₂P₀′ × Nₚ
+    v₃ = P₃P₀′ × Nₚ
+    f₁ = V₁ ⋅ v₁
+    f₂ = V₂ ⋅ v₂
+    f₃ = V₃ ⋅ v₃
+    f₁ > 0 && f₂ ≤ 0 && return ifelse(P₁P₀′⋅v₂ ≥ 0, 0, 1)
+    f₂ > 0 && f₃ ≤ 0 && return ifelse(P₂P₀′⋅v₃ ≥ 0, 0, 2)
+    f₃ > 0 && f₁ ≤ 0 && return ifelse(P₃P₀′⋅v₁ ≥ 0, 0, 3)
     error("unreachable")
 end
 
-@inline function _point_to_side(P₀′::Vec{3,T}, P₀::Vec{3,T}, P₁::Vec{3,T}, P₂::Vec{3,T}) where {T}
-    R = ((P₂-P₀′) × (P₁-P₀′)) × (P₂-P₁)
-    P₀′′ = P₀′ + ((P₁-P₀′)⋅R) / (R⋅R) * R
+@inline function _point_to_side(P₀′::Vec{3,T}, P₀::Vec{3,T}, P₁::Vec{3,T}, P₂::Vec{3,T}, l²::T) where {T}
     P₁P₂ = P₂ - P₁
-    t = (P₀′′-P₁) ⋅ (P₁P₂) / norm2(P₁P₂)
+    P₀′P₁ = P₁ - P₀′
+    R = ((P₂-P₀′) × P₀′P₁) × P₁P₂
+    P₀′′ = -P₀′P₁ + ((P₀′P₁⋅R)/(R⋅R)) * R
+    t = (P₀′′⋅(P₁P₂)) / l²
     0 ≤ t ≤ 1 && return (P₁+t*P₁P₂)-P₀
     t < 0 && return P₁-P₀
     t > 1 && return P₂-P₀
