@@ -43,7 +43,8 @@ function Side(a::Vec{2,T}, b::Vec{2,T}) where {T}
     Side(E_ab, E_aa′, E_bb′, c, v)
 end
 
-struct Triangle{T}
+# This method is fast but sacrifices accuracy
+struct FastTriangle{T}
     P₁::Vec{3,T}
     P₂::Vec{3,T}
     P₃::Vec{3,T}
@@ -56,11 +57,11 @@ struct Triangle{T}
     side3::Side{T}
 end
 
-function Triangle(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
+function FastTriangle(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
     @assert length(P₁) == length(P₂) == length(P₃) == 3
-    Triangle(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
+    FastTriangle(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
 end
-function Triangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
+function FastTriangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
     P₁′ = P₁ - P₁
     P₂′ = P₂ - P₁
     P₃′ = P₃ - P₁
@@ -76,14 +77,14 @@ function Triangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
     side1 = Side(@Tensor(P₁′[2:3]), @Tensor(P₂′[2:3]))
     side2 = Side(@Tensor(P₂′[2:3]), @Tensor(P₃′[2:3]))
     side3 = Side(@Tensor(P₃′[2:3]), @Tensor(P₁′[2:3]))
-    Triangle(P₁, P₂, P₃, -P₁, R, inv(R), side1, side2, side3)
+    FastTriangle(P₁, P₂, P₃, -P₁, R, inv(R), side1, side2, side3)
 end
 
-@inline function vector(P₀::AbstractVector{T}, tri::Triangle{T}) where {T}
+@inline function vector(P₀::AbstractVector{T}, tri::FastTriangle{T}) where {T}
     @assert length(P₀) == 3
     convert(typeof(P₀), vector(Vec{3,T}(P₀), tri))
 end
-@inline function vector(P₀::Vec{3,T}, tri::Triangle{T}) where {T}
+@inline function vector(P₀::Vec{3,T}, tri::FastTriangle{T}) where {T}
     side1, side2, side3 = tri.side1, tri.side2, tri.side3
     P₀′ = @Tensor transform(P₀, tri)[2:3]
     # side1
@@ -106,15 +107,16 @@ end
 end
 
 @inline _project(P₀′::Vec{2,T}, side::Side{T}) where {T} = side.v + (side.c⋅P₀′)*side.c
-@inline transform(a::Vec{3,T}, tri::Triangle{T}) where {T} = tri.R ⋅ (a + tri.t)
-@inline transform_inv(a::Vec{3,T}, tri::Triangle{T}) where {T} = tri.R⁻¹ ⋅ a - tri.t
-@inline transform_inv(a::Vec{2,T}, tri::Triangle{T}) where {T} = transform_inv(vcat(0,a), tri)
+@inline transform(a::Vec{3,T}, tri::FastTriangle{T}) where {T} = tri.R ⋅ (a + tri.t)
+@inline transform_inv(a::Vec{3,T}, tri::FastTriangle{T}) where {T} = tri.R⁻¹ ⋅ a - tri.t
+@inline transform_inv(a::Vec{2,T}, tri::FastTriangle{T}) where {T} = transform_inv(vcat(0,a), tri)
 
-################################
-# 3D method (testing purposes) #
-################################
+#############
+# 3D method #
+#############
 
-struct Triangle_3DMethod{T}
+# This is slower than the 2D method but offers higher accuracy
+struct Triangle{T}
     P₁::Vec{3,T}
     P₂::Vec{3,T}
     P₃::Vec{3,T}
@@ -125,23 +127,23 @@ struct Triangle_3DMethod{T}
     V₃::Vec{3,T}
 end
 
-function Triangle_3DMethod(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
+function Triangle(P₁::AbstractVector{T}, P₂::AbstractVector{T}, P₃::AbstractVector{T}) where {T}
     @assert length(P₁) == length(P₂) == length(P₃) == 3
-    Triangle_3DMethod(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
+    Triangle(Vec{3,T}(P₁), Vec{3,T}(P₂), Vec{3,T}(P₃))
 end
-function Triangle_3DMethod(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
+function Triangle(P₁::Vec{3,T}, P₂::Vec{3,T}, P₃::Vec{3,T}) where {T}
     Nₚ = normalize((P₂-P₁) × (P₃-P₁))
     V₁ = Nₚ × (normalize(P₁-P₂) + normalize(P₁-P₃))
     V₂ = Nₚ × (normalize(P₂-P₃) + normalize(P₂-P₁))
     V₃ = Nₚ × (normalize(P₃-P₁) + normalize(P₃-P₂))
-    Triangle_3DMethod(P₁, P₂, P₃, Nₚ, V₁, V₂, V₃)
+    Triangle(P₁, P₂, P₃, Nₚ, V₁, V₂, V₃)
 end
 
-@inline function vector(P₀::AbstractVector{T}, tri::Triangle_3DMethod{T}) where {T}
+@inline function vector(P₀::AbstractVector{T}, tri::Triangle{T}) where {T}
     @assert length(P₀) == 3
     convert(typeof(P₀), vector(Vec{3,T}(P₀), tri))
 end
-@inline function vector(P₀::Vec{3,T}, tri::Triangle_3DMethod{T}) where {T}
+@inline function vector(P₀::Vec{3,T}, tri::Triangle{T}) where {T}
     P₁, P₂, P₃, Nₚ = tri.P₁, tri.P₂, tri.P₃, tri.Nₚ
     P₀′ = P₀ - ((P₀-P₁)⋅Nₚ) * Nₚ
     pos = _position(P₀′, tri)
@@ -153,7 +155,7 @@ end
 end
 
 # 0: inside, 1: P₁P₂, 2: P₂P₃, 3: P₃P₁
-@inline function _position(P₀′::Vec{3,T}, tri::Triangle_3DMethod{T}) where {T}
+@inline function _position(P₀′::Vec{3,T}, tri::Triangle{T}) where {T}
     P₁, P₂, P₃, Nₚ, V₁, V₂, V₃ = tri.P₁, tri.P₂, tri.P₃, tri.Nₚ, tri.V₁, tri.V₂, tri.V₃
     P₁P₀′ = P₀′ - P₁
     P₂P₀′ = P₀′ - P₂

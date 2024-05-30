@@ -1,7 +1,7 @@
 using PointToTriangle
 using Test
 
-using PointToTriangle: Triangle, Triangle_3DMethod
+using PointToTriangle: FastTriangle, Triangle
 using Tensorial
 using StaticArrays
 
@@ -13,9 +13,9 @@ using StaticArrays
     end
 end
 
-@testset "PointToTriangle.Triangle" begin
+@testset "PointToTriangle.FastTriangle" begin
     for T in (Float32, Float64)
-        for Tri in (Triangle, Triangle_3DMethod)
+        for Tri in (FastTriangle, Triangle)
             # Array
             a = rand(T, 3)
             b = rand(T, 3)
@@ -38,7 +38,7 @@ end
 @testset "PointToTriangle.vector" begin
     # check inference
     for T in (Float32, Float64)
-        for Tri in (Triangle, Triangle_3DMethod)
+        for Tri in (FastTriangle, Triangle)
             a = rand(T, 3)
             b = rand(T, 3)
             c = rand(T, 3)
@@ -55,7 +55,7 @@ end
 
     # check computation
     project(p, a, b) = a + ((b-a)⋅(p-a))/((b-a)⋅(b-a))*(b-a)
-    for Tri in (Triangle, Triangle_3DMethod)
+    for Tri in (FastTriangle, Triangle)
         @test all(1:1_000_000) do _
             a = rand(Vec{3})
             b = rand(Vec{3})
@@ -93,8 +93,8 @@ end
         b = rand(Vec{3})
         c = rand(Vec{3})
         p = rand(Vec{3})
-        tri1 = Triangle(a,b,c)
-        tri2 = Triangle_3DMethod(a,b,c)
+        tri1 = FastTriangle(a,b,c)
+        tri2 = Triangle(a,b,c)
         PointToTriangle.vector(p, tri1) ≈ PointToTriangle.vector(p, tri2)
     end
 end
