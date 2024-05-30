@@ -7,4 +7,4 @@ version = "0.1.2"
 Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 
 [compat]
-Tensorial = "0.13"
+Tensorial = "0.13, 0.14"
