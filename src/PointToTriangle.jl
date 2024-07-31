@@ -163,10 +163,23 @@ end
     f₁ = V₁ ⋅ P₁P₀′
     f₂ = V₂ ⋅ P₂P₀′
     f₃ = V₃ ⋅ P₃P₀′
-    f₁ > 0 && f₂ ≤ 0 && return ifelse((P₁P₀′×P₂P₀′)⋅Nₚ ≥ 0, 0, 1)
-    f₂ > 0 && f₃ ≤ 0 && return ifelse((P₂P₀′×P₃P₀′)⋅Nₚ ≥ 0, 0, 2)
-    f₃ > 0 && f₁ ≤ 0 && return ifelse((P₃P₀′×P₁P₀′)⋅Nₚ ≥ 0, 0, 3)
-    error("unreachable")
+    if f₁ > 0
+        if f₂ > 0
+            return ifelse((P₂P₀′×P₃P₀′)⋅Nₚ ≥ 0, 0, 2)
+        else
+            return ifelse((P₁P₀′×P₂P₀′)⋅Nₚ ≥ 0, 0, 1)
+        end
+    else
+        if f₃ > 0
+            return ifelse((P₃P₀′×P₁P₀′)⋅Nₚ ≥ 0, 0, 3)
+        else
+            return ifelse((P₂P₀′×P₃P₀′)⋅Nₚ ≥ 0, 0, 2)
+        end
+    end
+    # f₁ > 0 && f₂ ≤ 0 && return ifelse((P₁P₀′×P₂P₀′)⋅Nₚ ≥ 0, 0, 1)
+    # f₂ > 0 && f₃ ≤ 0 && return ifelse((P₂P₀′×P₃P₀′)⋅Nₚ ≥ 0, 0, 2)
+    # f₃ > 0 && f₁ ≤ 0 && return ifelse((P₃P₀′×P₁P₀′)⋅Nₚ ≥ 0, 0, 3)
+    # error("unreachable")
 end
 
 @inline function _point_to_side(P₀′::Vec{3,T}, P₀::Vec{3,T}, P₁::Vec{3,T}, P₂::Vec{3,T}) where {T}
@@ -175,8 +188,13 @@ end
     R = ((P₂-P₀′) × P₀′P₁) × P₁P₂
     P₀′′ = -P₀′P₁ + ((P₀′P₁⋅R)/(R⋅R)) * R
     t = (P₀′′⋅P₁P₂) / norm2(P₁P₂)
-    0 ≤ t ≤ 1 && return (P₁+t*P₁P₂)-P₀
-    t < 0 ? P₁-P₀ : P₂-P₀
+    if 0 ≤ t
+        return t ≤ 1 ? (P₁+t*P₁P₂)-P₀ : P₂-P₀
+    else
+        return P₁-P₀
+    end
+    # 0 ≤ t ≤ 1 && return (P₁+t*P₁P₂)-P₀
+    # t < 0 ? P₁-P₀ : P₂-P₀
 end
 @inline norm2(x) = dot(x,x)
 
