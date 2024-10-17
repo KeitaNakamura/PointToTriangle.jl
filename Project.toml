@@ -1,10 +1,10 @@
 name = "PointToTriangle"
 uuid = "87696978-e20b-44cd-8068-02da328946c2"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.2.2"
+version = "0.2.3"
 
 [deps]
 Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 
 [compat]
-Tensorial = "0.13, 0.14, 0.15, 0.16"
+Tensorial = "0.13, 0.14, 0.15, 0.16, 0.17"
